@@ -21,6 +21,7 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronRight,
+  Download,
 } from 'lucide-react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -236,6 +237,61 @@ export default function AppLayout() {
     printWindow.document.close();
   };
 
+  const handleDownloadQR = () => {
+    if (!hotelData) {
+      toast.error('Hotel data not loaded');
+      return;
+    }
+
+    const svgElement = document.getElementById('layout-hotel-print-qr');
+    if (!svgElement) {
+      toast.error('QR code element not found');
+      return;
+    }
+
+    try {
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        canvas.width = 1200; // High resolution
+        canvas.height = 1200;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw centered
+        const size = 1000;
+        const x = (canvas.width - size) / 2;
+        const y = (canvas.height - size) / 2;
+        ctx.drawImage(img, x, y, size, size);
+
+        // Add text
+        ctx.fillStyle = '#1A1A40';
+        ctx.font = 'bold 60px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(hotelData.name, canvas.width / 2, 100);
+        ctx.font = '40px Inter, sans-serif';
+        ctx.fillText('Scan to Rate & Review', canvas.width / 2, 1150);
+
+        const pngUrl = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.href = pngUrl;
+        downloadLink.download = `${hotelData.name.replace(/\s+/g, '_')}_Review_QR.png`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        toast.success('QR Code downloaded successfully');
+      };
+
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.error('Failed to download QR code');
+    }
+  };
+
   const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'Super Admin' || user?.role === 'SuperAdmin';
 
   // Get panel title based on role
@@ -347,7 +403,8 @@ export default function AppLayout() {
                 {!isSuperAdmin && hotelData && (
                   <div className="lg:hidden border-b border-gray-50">
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setIsQRModalOpen(true);
                         setIsUserMenuOpen(false);
                       }}
@@ -357,7 +414,19 @@ export default function AppLayout() {
                       <span>View QR Code</span>
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadQR();
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Download className="w-4 h-4 text-[#039E2F]" />
+                      <span>Download QR Code</span>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
                         handlePrintQR();
                         setIsUserMenuOpen(false);
                       }}
@@ -569,9 +638,9 @@ export default function AppLayout() {
         )}
       </Modal>
 
-      {/* Hidden QR for instant printing/access */}
+      {/* Hidden QR for instant printing/access - Using opacity instead of display:none for better reliability */}
       {!isSuperAdmin && hotelData && (
-        <div style={{ display: 'none' }} aria-hidden="true">
+        <div style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1 }} aria-hidden="true">
           <QRCodeSVG
             id="layout-hotel-print-qr"
             value={`${window.location.origin}/#/review?hotelId=${hotelData._id || hotelData.id}`}
