@@ -154,13 +154,6 @@ export default function AppLayout() {
     }
   }, [user]);
 
-  const handleDropdownAction = (action) => {
-    // Immediate execution for mobile reliability
-    action();
-    // Non-blocking closure of menu
-    setTimeout(() => setIsUserMenuOpen(false), 100);
-  };
-
   const handleLogout = () => {
     logout();
     toast.success('Logged out successfully');
@@ -416,12 +409,9 @@ export default function AppLayout() {
                   <div className="lg:hidden border-b border-gray-50">
                     <button
                       onClick={(e) => {
-                        e.preventDefault();
                         e.stopPropagation();
-                        // Open modal first
+                        setIsUserMenuOpen(false);
                         setIsQRModalOpen(true);
-                        // Close menu second with a slight delay to avoid event conflicts on mobile
-                        setTimeout(() => setIsUserMenuOpen(false), 50);
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
@@ -431,7 +421,8 @@ export default function AppLayout() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDropdownAction(handleDownloadQR);
+                        setIsUserMenuOpen(false);
+                        handleDownloadQR();
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
@@ -441,7 +432,8 @@ export default function AppLayout() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDropdownAction(handlePrintQR);
+                        setIsUserMenuOpen(false);
+                        handlePrintQR();
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
