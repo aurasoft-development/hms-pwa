@@ -157,7 +157,7 @@ export default function AppLayout() {
   };
 
   const handlePrintQR = () => {
-    if (!hotelData) {
+    if (!hotel) {
       toast.error('Hotel data not loaded');
       return;
     }
@@ -239,7 +239,7 @@ export default function AppLayout() {
   };
 
   const handleDownloadQR = () => {
-    if (!hotelData) {
+    if (!hotel) {
       toast.error('Hotel data not loaded');
       return;
     }

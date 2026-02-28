@@ -11,6 +11,8 @@ export const Modal = ({
   className = '',
   containerClassName = '',
 }) => {
+  const overlayRef = useRef(null);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -31,8 +33,6 @@ export const Modal = ({
     xl: 'max-w-5xl',
     full: 'max-w-full mx-4',
   };
-
-  const overlayRef = useRef(null);
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
