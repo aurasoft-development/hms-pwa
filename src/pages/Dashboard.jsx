@@ -24,9 +24,8 @@ export default function Dashboard() {
   const [superAdminStats, setSuperAdminStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  useEffect(() => {
-    initializeData();
-  }, [initializeData]);
+  // Data is initialized in AppLayout
+  // No need to double-initialize here unless it's page-specific data
 
   // Fetch super admin dashboard stats
   useEffect(() => {

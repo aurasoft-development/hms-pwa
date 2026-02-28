@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export const Modal = ({
   isOpen,
@@ -32,19 +32,22 @@ export const Modal = ({
     full: 'max-w-full mx-4',
   };
 
+  const overlayRef = useRef(null);
+
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 py-8 pointer-events-none">
         <div
+          ref={overlayRef}
           className="fixed inset-0 transition-opacity bg-black/40 backdrop-blur-md pointer-events-auto"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              e.currentTarget._trackingClick = true;
+            if (e.target === overlayRef.current) {
+              e.currentTarget._tracking = true;
             }
           }}
           onMouseUp={(e) => {
-            if (e.target === e.currentTarget && e.currentTarget._trackingClick) {
-              delete e.currentTarget._trackingClick;
+            if (e.target === overlayRef.current && e.currentTarget._tracking) {
+              delete e.currentTarget._tracking;
               onClose();
             }
           }}

@@ -62,12 +62,15 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { initializeData } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
   const [openDropdowns, setOpenDropdowns] = useState(['Bookings']); // Default bookings open
-  const { isQRModalOpen, setIsQRModalOpen, hotel } = useAppStore();
+  const { GLOBAL_LAYOUT_QR_MODAL_STATUS, setGlobalQRModalStatus, hotel, initializeData } = useAppStore();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [hotelName, setHotelName] = useState('');
+  const hotelName = useMemo(() => hotel?.name || '', [hotel]);
+
+  // Use the new status
+  const isQRModalOpen = GLOBAL_LAYOUT_QR_MODAL_STATUS;
+  const setIsQRModalOpen = setGlobalQRModalStatus;
   console.log(user, 'user user ');
 
   // Filter menu items based on permissions
@@ -127,19 +130,14 @@ export default function AppLayout() {
       const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'Super Admin' || user?.role === 'SuperAdmin';
       if (isSuperAdmin || !user) return;
 
-      // Check store first to avoid redundant hits
+      // Check store first
       const storeHotel = useAppStore.getState().hotel;
-      if (storeHotel) {
-        setHotelData(storeHotel);
-        setHotelName(storeHotel.name || '');
-        return;
-      }
+      if (storeHotel) return;
 
       try {
         const response = await hotelManagementApi.getMyHotel();
         const fetchedHotel = response.data || response;
         if (fetchedHotel) {
-          setHotelName(fetchedHotel.name || '');
           useAppStore.setState({ hotel: fetchedHotel }); // Sync with store
         }
       } catch (error) {
@@ -406,11 +404,11 @@ export default function AppLayout() {
                 {!isSuperAdmin && hotel && (
                   <div className="lg:hidden border-b border-gray-50">
                     <button
-                      onClick={(e) => {
+                      onPointerDown={(e) => {
                         e.stopPropagation();
-                        // ONLY open modal. Dropdown closure will be handled by 
-                        // handleClickOutside naturally when user interacts with Modal.
+                        // Open instantly on touch start to beat any synthesized clicks
                         setIsQRModalOpen(true);
+                        setIsUserMenuOpen(false);
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
