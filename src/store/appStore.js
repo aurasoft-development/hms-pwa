@@ -198,9 +198,5 @@ export const useAppStore = create((set, get) => ({
     }));
     return newPayment;
   },
-
-  // Global UI State (Managed by Layout)
-  GLOBAL_LAYOUT_QR_MODAL_STATUS: false,
-  setGlobalQRModalStatus: (isOpen) => set({ GLOBAL_LAYOUT_QR_MODAL_STATUS: isOpen }),
 }));
 

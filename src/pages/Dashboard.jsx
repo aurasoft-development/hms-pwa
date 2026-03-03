@@ -19,13 +19,15 @@ import { theme } from '../utils/theme';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { bookings, initializeData, hotel } = useAppStore();
-  const { user } = useAuthStore();
+  const { bookings, initializeData } = useAppStore();
+  const { user, hotelData: cachedHotelData } = useAuthStore();
+  const [hotelName, setHotelName] = useState('');
   const [superAdminStats, setSuperAdminStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  // Data is initialized in AppLayout
-  // No need to double-initialize here unless it's page-specific data
+  useEffect(() => {
+    initializeData();
+  }, [initializeData]);
 
   // Fetch super admin dashboard stats
   useEffect(() => {
@@ -55,8 +57,34 @@ export default function Dashboard() {
   }, [user]);
 
   // Fetch hotel name for admin/subadmin users
-  // Use hotel name from store
-  const hotelName = useMemo(() => hotel?.name || '', [hotel]);
+  useEffect(() => {
+    const fetchHotelName = async () => {
+      // Only fetch for admin/subadmin, not for super_admin
+      const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'Super Admin' || user?.role === 'SuperAdmin';
+      if (isSuperAdmin) return;
+
+      // Use cached data if available
+      if (cachedHotelData?.name) {
+        setHotelName(cachedHotelData.name);
+        return;
+      }
+
+      try {
+        const response = await hotelManagementApi.getMyHotel();
+        const hotel = response.data || response;
+        if (hotel?.name) {
+          setHotelName(hotel.name);
+        }
+      } catch (error) {
+        console.error('Failed to fetch hotel:', error);
+        // Don't show error toast, just silently fail
+      }
+    };
+
+    if (user) {
+      fetchHotelName();
+    }
+  }, [user]);
 
   // Admin-specific stats (for Admin role)
   const adminStats = useMemo(() => {
@@ -136,29 +164,37 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Modern Welcome Section */}
-      <Card className="overflow-hidden border-0 shadow-lg">
+      <Card className="overflow-hidden border-0 shadow-xl">
         <div
           className="relative p-5 sm:p-6"
           style={{
-            background: 'linear-gradient(to bottom right, #039E2F, #027a24)',
+            background: 'linear-gradient(135deg, #039E2F 0%, #027a24 50%, #039E2F 100%)',
+            backgroundSize: '200% 200%',
           }}
         >
           {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none">
-            <Sparkles className="w-full h-full text-white" />
+          <div className="absolute top-0 right-0 w-40 h-40 opacity-10">
+            <Sparkles className="w-full h-full" style={{ color: '#FFFFFF' }} />
+          </div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 opacity-10">
+            <Building2 className="w-full h-full" style={{ color: '#FFFFFF' }} />
           </div>
 
           {/* Content */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2.5 mb-2">
                 <div
-                  className="p-2 rounded-xl bg-white/10"
+                  className="p-2 rounded-xl shadow-lg"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(10px)',
+                  }}
                 >
                   <GreetingIcon className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-white/80 text-xs font-semibold uppercase tracking-wider">
+                  <p className="text-white/90 text-xs font-semibold uppercase tracking-wider">
                     {greeting.text}
                   </p>
                   {userName && (
@@ -188,7 +224,12 @@ export default function Dashboard() {
 
             {/* Icon Badge */}
             <div
-              className="hidden sm:flex items-center justify-center w-16 h-16 rounded-2xl flex-shrink-0 bg-white/10 border border-white/20"
+              className="hidden sm:flex items-center justify-center w-16 h-16 rounded-2xl shadow-xl flex-shrink-0"
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(255, 255, 255, 0.2)',
+              }}
             >
               <Building2 className="w-8 h-8 text-white" />
             </div>
@@ -202,7 +243,7 @@ export default function Dashboard() {
         <DashboardStats superAdminStats={superAdminStats} loading={loadingStats} />
       ) : (
         // Admin Dashboard Stats
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Bookings"
             value={adminStats.totalBookings}

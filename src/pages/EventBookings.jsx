@@ -10,7 +10,8 @@ import { Button } from '../atoms/Button';
 import { InputField } from '../atoms/InputField';
 import { Modal } from '../atoms/Modal';
 import { EventCard } from '../molecules/EventCard';
-import { Search, Plus, Calendar, X, Filter, Loader2, Info, Edit } from 'lucide-react';
+import { ConfirmationDialog } from '../molecules/ConfirmationDialog';
+import { Search, Plus, Calendar, X, Filter, Loader2, Info, Edit, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { theme } from '../utils/theme';
 
@@ -35,6 +36,9 @@ export default function EventBookings() {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [eventDetails, setEventDetails] = useState(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
+    const [roomNumbers, setRoomNumbers] = useState({});
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [eventToDelete, setEventToDelete] = useState(null);
 
     // Fetch Hotel ID
     useEffect(() => {
@@ -88,12 +92,59 @@ export default function EventBookings() {
         setDetailsLoading(true);
         try {
             const response = await eventBookingApi.getEventWithAllLinkedBooking(hotelId, event._id || event.id);
-            setEventDetails(response.data || response);
+            const data = response.data || response;
+            setEventDetails(data);
+
+            // Fetch room numbers for each booking
+            if (data.bookings && data.bookings.length > 0) {
+                const roomPromises = data.bookings.map(async (booking) => {
+                    if (booking.roomId && !roomNumbers[booking.roomId]) {
+                        try {
+                            const roomResponse = await roomManagementApi.getRoomById(hotelId, booking.roomId);
+                            const roomData = roomResponse.data || roomResponse;
+                            return { id: booking.roomId, number: roomData.roomNumber || 'N/A' };
+                        } catch (err) {
+                            console.error(`Failed to fetch room ${booking.roomId}:`, err);
+                            return { id: booking.roomId, number: 'Error' };
+                        }
+                    }
+                    return null;
+                });
+
+                const fetchedRooms = await Promise.all(roomPromises);
+                const newRoomNumbers = { ...roomNumbers };
+                fetchedRooms.forEach(room => {
+                    if (room) newRoomNumbers[room.id] = room.number;
+                });
+                setRoomNumbers(newRoomNumbers);
+            }
         } catch (error) {
             console.error('Failed to fetch event details:', error);
             toast.error('Failed to load event details');
         } finally {
             setDetailsLoading(false);
+        }
+    };
+
+    // Handle Delete Event
+    const handleDeleteEvent = (event) => {
+        setEventToDelete(event);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteEvent = async () => {
+        if (!eventToDelete || !hotelId) return;
+
+        try {
+            await eventBookingApi.deleteEvent(hotelId, eventToDelete._id || eventToDelete.id);
+            toast.success('Event and linked bookings deleted successfully');
+            setIsDeleteModalOpen(false);
+            setEventToDelete(null);
+            fetchEvents(pagination.page); // Refresh current page
+        } catch (error) {
+            console.error('Failed to delete event:', error);
+            const errorMessage = typeof error === 'string' ? error : (error.response?.data?.message || error.message || 'Failed to delete event');
+            toast.error(errorMessage);
         }
     };
 
@@ -156,6 +207,8 @@ export default function EventBookings() {
                                 key={event._id || event.id}
                                 event={event}
                                 onView={() => handleViewDetails(event)}
+                                onEdit={() => navigate(`/edit-event-booking/${event._id || event.id}`)}
+                                onDelete={() => handleDeleteEvent(event)}
                             />
                         ))}
                     </div>
@@ -262,7 +315,7 @@ export default function EventBookings() {
                                     <div key={booking._id} className="flex justify-between items-center p-3 border rounded-lg bg-white shadow-sm">
                                         <div>
                                             <p className="font-semibold">{booking.guestName}</p>
-                                            <p className="text-xs text-gray-500">Room ID: {booking.roomId}</p>
+                                            <p className="text-xs text-gray-800 font-medium">Room Number: <span className="text-burgundy" style={{ color: theme.colors.primary.main }}>{roomNumbers[booking.roomId] || 'Loading...'}</span></p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-sm font-bold text-green-600">₹{booking.totalAmount}</p>
@@ -276,6 +329,19 @@ export default function EventBookings() {
                 ) : null}
             </Modal>
 
+            {/* Delete Confirmation Modal */}
+            <ConfirmationDialog
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setEventToDelete(null);
+                }}
+                onConfirm={confirmDeleteEvent}
+                title="Delete Event"
+                message={eventToDelete ? `Are you sure you want to delete "${eventToDelete.name}"? This will also cancel all linked room bookings and this action cannot be undone.` : ''}
+                confirmText="Delete Event"
+                variant="danger"
+            />
         </div>
     );
 }

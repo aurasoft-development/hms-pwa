@@ -2,10 +2,10 @@ import { format } from 'date-fns';
 import { Card } from '../atoms/Card';
 import { Button } from '../atoms/Button';
 import { useAuthStore } from '../store/authStore';
-import { Calendar, User, Phone, MapPin, Eye, Tag, Users } from 'lucide-react';
+import { Calendar, User, Phone, MapPin, Eye, Tag, Users, Edit, Trash2 } from 'lucide-react';
 import { theme } from '../utils/theme';
 
-export const EventCard = ({ event, onView }) => {
+export const EventCard = ({ event, onView, onEdit, onDelete }) => {
     const getStatusStyle = (status) => {
         switch (status?.toLowerCase()) {
             case 'planned':
@@ -66,10 +66,30 @@ export const EventCard = ({ event, onView }) => {
                         <p className="text-[10px] text-gray-500 uppercase font-semibold">Advance Paid</p>
                         <p className="text-sm font-bold text-burgundy" style={{ color: '#800020' }}>₹{event.advancePaid?.toLocaleString()}</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={onView} className="flex items-center gap-2">
-                        <Eye className="w-4 h-4" />
-                        View Details
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={onView} className="flex-1 flex items-center justify-center gap-2">
+                            <Eye className="w-4 h-4" />
+                            View
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={onEdit} className="flex-1 flex items-center justify-center gap-2 border-blue-200 text-blue-600 hover:bg-blue-50">
+                            <Edit className="w-4 h-4" />
+                            Edit
+                        </Button>
+                        {onDelete && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(event);
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         </Card>

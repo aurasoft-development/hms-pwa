@@ -316,5 +316,71 @@ export const whatsappService = {
 
     this.shareOnWhatsApp(managerPhoneNumber, message);
   },
+
+  /**
+   * Generate formatted receipt message for an event
+   */
+  generateEventReceiptMessage(eventData) {
+    const event = eventData.event || eventData;
+    const bookings = eventData.bookings || [];
+
+    const formatDate = (dateString) => {
+      if (!dateString) return 'N/A';
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-IN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return dateString;
+      }
+    };
+
+    let message = `🎊 *EVENT BOOKING RECEIPT*\n`;
+    message += `━━━━━━━━━━━━━━━━━\n`;
+    message += `*Event:* ${event.name}\n`;
+    message += `*Organizer:* ${event.organizerName}\n`;
+    message += `*Date:* ${formatDate(event.createdAt || new Date())}\n\n`;
+
+    message += `📅 *EVENT SCHEDULE*\n`;
+    message += `*From:* ${formatDate(event.startDate)}\n`;
+    message += `*To:* ${formatDate(event.endDate)}\n\n`;
+
+    message += `🛏️ *ACCOMMODATIONS*\n`;
+    message += `*Total Rooms:* ${bookings.length || event.roomIds?.length || 0}\n`;
+    if (bookings.length > 0) {
+      const roomNumbers = bookings.map(b => b.roomNumber || b.room?.roomNumber).filter(Boolean);
+      if (roomNumbers.length > 0) {
+        message += `*Rooms:* ${roomNumbers.join(', ')}\n`;
+      }
+    }
+    message += `\n`;
+
+    message += `💰 *FINANCIAL SUMMARY*\n`;
+    message += `*Advance Paid:* ₹${(event.advancePaid || 0).toLocaleString()}\n`;
+    message += `━━━━━━━━━━━━━━━━━\n\n`;
+    message += `Thank you for choosing us for your special occasion! 🙏`;
+
+    return message;
+  },
+
+  /**
+   * Share event receipt to WhatsApp
+   * @param {Object} eventData - Event data object
+   * @param {string} phoneNumber - Optional phone number
+   */
+  shareEventReceipt(eventData, phoneNumber = null) {
+    const message = this.generateEventReceiptMessage(eventData);
+
+    if (phoneNumber) {
+      this.shareOnWhatsApp(phoneNumber, message);
+    } else {
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+      window.open(whatsappUrl, '_blank');
+    }
+  },
 };
 

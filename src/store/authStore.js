@@ -5,13 +5,14 @@ export const useAuthStore = create(
   persist(
     (set) => ({
       user: null,
+      hotelData: null,
       isAuthenticated: false,
-      login: (userData) => {
-        set({ user: userData, isAuthenticated: true });
+      login: (userData, hotelData = null) => {
+        set({ user: userData, hotelData: hotelData, isAuthenticated: true });
       },
       logout: () => {
         localStorage.clear();
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, hotelData: null, isAuthenticated: false });
       },
     }),
     {

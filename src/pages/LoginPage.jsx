@@ -5,7 +5,7 @@ import { theme } from '../utils/theme';
 
 export default function LoginPage() {
   return (
-    <div className="flex items-center justify-center relative min-h-screen w-full overflow-hidden bg-[#ECF3F3]">
+    <div className="flex items-center justify-center relative overflow-hidden" style={{ width: '100%', height: '100%', minWidth: '100%', minHeight: '100%', margin: 0, padding: 0, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.background.primary }}>
       {/* Background decoration */}
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

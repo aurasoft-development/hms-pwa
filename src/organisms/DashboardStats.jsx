@@ -40,7 +40,7 @@ export const DashboardStats = ({ superAdminStats, loading }) => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <StatCard
                 title="Total Hotels"
                 value={superAdminStats.totalHotels || 0}
@@ -95,7 +95,7 @@ export const DashboardStats = ({ superAdminStats, loading }) => {
                               )}
                             </div>
                             {hotel.isActive && (
-                              <span
+                              <span 
                                 className="px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0"
                                 style={{ backgroundColor: theme.colors.background.tertiary, color: theme.colors.primary.main }}
                               >
@@ -166,7 +166,7 @@ export const DashboardStats = ({ superAdminStats, loading }) => {
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard
         title="Total Bookings"
         value={stats.totalBookings}

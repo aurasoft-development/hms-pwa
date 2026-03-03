@@ -361,8 +361,8 @@ export const PackageList = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((item) => (
-              <Card key={item._id || item.id} hover>
-                <div className="flex items-start gap-3 mb-4">
+              <Card key={item._id || item.id} hover className="flex flex-col h-full">
+                <div className="flex items-start gap-3  flex-1">
                   <div className="p-2 rounded-lg" style={{ backgroundColor: theme.colors.background.tertiary }}>
                     <Package className="w-5 h-5" style={{ color: theme.colors.primary.main }} />
                   </div>
@@ -397,7 +397,7 @@ export const PackageList = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-auto pt-4 border-t border-gray-100">
                   <Button
                     variant="outline"
                     size="sm"

@@ -12,7 +12,7 @@ export const Card = ({
     <div
       className={`
         rounded-2xl shadow-lg border
-        ${padding ? 'p-4 sm:p-6' : ''}
+        ${padding ? 'p-6' : ''}
         ${hover ? 'hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer' : ''}
         ${className}
       `}

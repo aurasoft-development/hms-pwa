@@ -15,6 +15,7 @@ import { Button } from '../atoms/Button';
 import { InputField } from '../atoms/InputField';
 import { SelectDropdown } from '../atoms/SelectDropdown';
 import { Card } from '../atoms/Card';
+import { ManagerShareSelection } from '../organisms/ManagerShareSelection';
 import toast from 'react-hot-toast';
 import { ArrowLeft } from 'lucide-react';
 
@@ -42,22 +43,20 @@ export default function NewBooking() {
   const { packages, foodPackages } = useAppStore();
   const { rooms: hookRooms } = useRooms();
 
+  const { setFormData: setPersistentData, clearFormData, getFormData } = useFormStore();
+
   const [loading, setLoading] = useState(false);
   const [apiRooms, setApiRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [hotelId, setHotelId] = useState(null);
   const [apiFoodPackages, setApiFoodPackages] = useState([]);
   const [foodPackagesLoading, setFoodPackagesLoading] = useState(false);
-  const [adminsList, setAdminsList] = useState([]);
   const [selectedManagers, setSelectedManagers] = useState(() => getFormData('newBookingManagers', []));
 
   useEffect(() => {
     setPersistentData('newBookingManagers', selectedManagers);
   }, [selectedManagers, setPersistentData]);
-  const [adminsLoading, setAdminsLoading] = useState(false);
   const [successData, setSuccessData] = useState(null);
-
-  const { setFormData: setPersistentData, clearFormData, getFormData } = useFormStore();
 
   // Form State - strictly matching BookingForm properties
   const initialFormData = {
@@ -158,28 +157,6 @@ export default function NewBooking() {
     fetchFoodPackages();
   }, [hotelId]);
 
-  useEffect(() => {
-    const fetchAdmins = async () => {
-      setAdminsLoading(true);
-      try {
-        const response = await authApi.getAllUsers();
-        const data = response.data || response || [];
-        // Filter out those with whatsapp numbers or treat all as potential recipients if they have one
-        const staff = data.filter(a => a.whatsappNumber);
-        setAdminsList(staff);
-        // Pre-select the default manager if found
-        const defaultManager = staff.find(s => s.whatsappNumber === "8305912893");
-        if (defaultManager) {
-          setSelectedManagers([defaultManager.whatsappNumber]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch admins:', error);
-      } finally {
-        setAdminsLoading(false);
-      }
-    };
-    fetchAdmins();
-  }, []);
 
   // --- Helpers ---
   const getDefaultDateTime = (date, defaultTime) => {
@@ -570,43 +547,10 @@ export default function NewBooking() {
           </div>
 
           {/* Manager Selection Section */}
-          <div className="pt-4 border-t border-gray-100 mt-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Share with Managers</h3>
-            {adminsLoading ? (
-              <p className="text-gray-500 italic">Loading managers...</p>
-            ) : adminsList.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {adminsList.map((manager) => (
-                  <label
-                    key={manager.id || manager._id}
-                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${selectedManagers.includes(manager.whatsappNumber)
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                      checked={selectedManagers.includes(manager.whatsappNumber)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedManagers([...selectedManagers, manager.whatsappNumber]);
-                        } else {
-                          setSelectedManagers(selectedManagers.filter(num => num !== manager.whatsappNumber));
-                        }
-                      }}
-                    />
-                    <div>
-                      <p className="font-semibold text-gray-800">{manager.name}</p>
-                      <p className="text-xs text-gray-500">{manager.whatsappNumber}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 italic">No managers with WhatsApp numbers found. Add them in Admin Management.</p>
-            )}
-          </div>
+          <ManagerShareSelection
+            selectedManagers={selectedManagers}
+            setSelectedManagers={setSelectedManagers}
+          />
         </div>
 
         {/* Right Column - Summary */}

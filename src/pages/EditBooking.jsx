@@ -9,12 +9,14 @@ import { useAppStore } from '../store/appStore';
 import { useFormStore } from '../store/formStore';
 import { useRooms } from '../hooks/useRooms';
 import { calculateBookingPrice } from '../utils/priceCalculator';
+import { whatsappService } from '../utils/whatsappService';
 import { Button } from '../atoms/Button';
 import { InputField } from '../atoms/InputField';
 import { SelectDropdown } from '../atoms/SelectDropdown';
 import { Card } from '../atoms/Card';
+import { ManagerShareSelection } from '../organisms/ManagerShareSelection';
 import toast from 'react-hot-toast';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Share2 } from 'lucide-react';
 
 // Transform API room to UI format
 const transformRoomFromAPI = (apiRoom) => {
@@ -32,13 +34,13 @@ const transformRoomFromAPI = (apiRoom) => {
     ...apiRoom, // Keep all original fields
   };
 };
-
 export default function EditBooking() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuthStore();
   const { packages, foodPackages } = useAppStore();
   const { rooms: hookRooms } = useRooms();
+  const { setFormData: setPersistentData, clearFormData, getFormData } = useFormStore();
 
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -49,8 +51,15 @@ export default function EditBooking() {
   const [hotelId, setHotelId] = useState(null);
   const [apiFoodPackages, setApiFoodPackages] = useState([]);
   const [foodPackagesLoading, setFoodPackagesLoading] = useState(false);
+  const [selectedManagers, setSelectedManagers] = useState(() => getFormData(`editBooking_${id}_managers`, []));
+  const [successData, setSuccessData] = useState(null);
 
-  const { setFormData: setPersistentData, clearFormData, getFormData } = useFormStore();
+  useEffect(() => {
+    if (id) {
+      setPersistentData(`editBooking_${id}_managers`, selectedManagers);
+    }
+  }, [selectedManagers, id, setPersistentData]);
+
   // Form State
   const [formData, setFormData] = useState({
     guestName: '',
@@ -287,29 +296,38 @@ export default function EditBooking() {
         notes: formData.notes,
       };
 
-      await bookingApi.updateBooking(id, apiPayload);
+      const bookingResponse = await bookingApi.updateBooking(id, apiPayload);
+      const updatedBooking = bookingResponse.data || bookingResponse;
 
-      // Check if status has changed and update it
-      if (booking && formData.status !== booking.status) {
-        const statusResponse = await bookingApi.updateBookingStatus(id, formData.status, hotelId);
+      // Prepare data for sharing
+      const selectedRoom = rooms.find(r => String(r.id || r._id) === String(formData.roomId));
+      const shareData = {
+        ...updatedBooking,
+        guestName: formData.guestName,
+        guestPhone: formData.guestPhone,
+        roomNumber: selectedRoom?.number || selectedRoom?.roomNumber || '',
+        roomType: selectedRoom?.type || selectedRoom?.roomType || '',
+        checkIn: formData.checkIn,
+        checkOut: formData.checkOut,
+        nights: priceBreakdown?.nights || 0,
+        totalAmount: priceBreakdown?.total || 0,
+        paymentStatus: updatedBooking.paymentStatus || 'Pending',
+        notes: formData.notes
+      };
 
-        // If checked out, show QR code modal
-        if (formData.status === 'checked_out' && (statusResponse.qrCode || statusResponse.data?.qrCode)) {
-          const qrCode = statusResponse.qrCode || statusResponse.data?.qrCode;
-          const token = statusResponse.token || statusResponse.data?.token;
-          setCheckoutData({
-            isOpen: true,
-            qrCode,
-            token
-          });
-          toast.success('Booking checked out successfully!');
-          return; // Don't navigate away yet
-        }
+      setSuccessData(shareData);
+
+      // Automatic WhatsApp Sharing to selected managers
+      if (selectedManagers.length > 0) {
+        selectedManagers.forEach(managerPhone => {
+          whatsappService.shareBookingDetailsWithManager(shareData, managerPhone);
+        });
+        toast.success('Sent updates to selected managers');
       }
 
       toast.success('Booking updated successfully!');
       clearFormData(`editBooking_${id}`);
-      navigate('/bookings');
+      clearFormData(`editBooking_${id}_managers`);
     } catch (error) {
       toast.error(error || 'Failed to update booking');
       console.error(error);
@@ -317,6 +335,81 @@ export default function EditBooking() {
       setLoading(false);
     }
   };
+
+  if (successData) {
+    return (
+      <div className="max-w-2xl mx-auto py-8">
+        <Card className="p-8 text-center space-y-6 animate-in fade-in zoom-in duration-300">
+          <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-10 h-10" />
+          </div>
+
+          <h1 className="text-3xl font-bold text-gray-900">Booking Updated!</h1>
+          <p className="text-gray-500">The booking details have been updated and are ready to share.</p>
+
+          <div className="bg-gray-50 rounded-2xl p-6 text-left space-y-3 border border-gray-100">
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">Booking ID</span>
+              <span className="font-semibold text-gray-900">#{successData._id?.slice(-6) || successData.id || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">Guest Name</span>
+              <span className="font-semibold text-gray-900">{successData.guestName}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">Room</span>
+              <span className="font-semibold text-gray-900">{successData.roomNumber} ({successData.roomType})</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">Status</span>
+              <span className={`font-bold capitalize ${successData.status === 'cancelled' ? 'text-red-600' : 'text-green-600'}`}>
+                {successData.status?.replace('_', ' ')}
+              </span>
+            </div>
+            <div className="flex justify-between pt-1">
+              <span className="text-gray-900 font-bold">Total Amount</span>
+              <span className="text-xl font-bold text-orange-500">₹{successData.totalAmount.toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+            <Button
+              className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white flex items-center justify-center gap-2 h-12"
+              onClick={() => whatsappService.shareReceipt(successData)}
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+              </svg>
+              Share via WhatsApp
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2 h-12 border-gray-300"
+              onClick={() => {
+                if (selectedManagers.length > 0) {
+                  selectedManagers.forEach(managerPhone => {
+                    whatsappService.shareBookingDetailsWithManager(successData, managerPhone);
+                  });
+                  toast.success('Shared with managers');
+                } else {
+                  toast.error('No managers selected');
+                }
+              }}
+            >
+              Resend to Manager(s)
+            </Button>
+          </div>
+
+          <Button
+            className="w-full bg-gray-900 hover:bg-black text-white h-12"
+            onClick={() => navigate('/bookings')}
+          >
+            Go to Bookings List
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   if (fetchLoading) {
     return (
@@ -481,19 +574,12 @@ export default function EditBooking() {
             </div>
           </div>
 
-          {/* Notes */}
-          <div className="space-y-4">
-            <label className="block text-sm font-semibold mb-2" style={{ color: '#2D2D2D' }}>
-              Notes
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Additional notes..."
-              rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-burgundy focus:border-transparent transition-all duration-200 bg-white"
-            />
-          </div>
+          {/* Manager Selection Section */}
+          <ManagerShareSelection
+            selectedManagers={selectedManagers}
+            setSelectedManagers={setSelectedManagers}
+            title="Share Updates with Managers"
+          />
         </div>
 
         {/* Right Column - Summary */}

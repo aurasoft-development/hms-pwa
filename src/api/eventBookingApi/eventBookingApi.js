@@ -20,5 +20,14 @@ export const eventBookingApi = {
         const response = await apiServices().get(`/bookings/events/${eventId}?hotelId=${hotelId}`);
         return response;
     },
-
+    // update an event booking
+    updateEvent: async (hotelId, eventId, data) => {
+        const response = await apiServices().patch(`/bookings/events/${eventId}?hotelId=${hotelId}`, data);
+        return response;
+    },
+    // delete an event booking
+    deleteEvent: async (hotelId, eventId) => {
+        const response = await apiServices().delete(`/bookings/events/${eventId}?hotelId=${hotelId}`);
+        return response;
+    },
 };

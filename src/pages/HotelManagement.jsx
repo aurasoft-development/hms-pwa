@@ -131,7 +131,7 @@ export default function HotelManagement() {
         localStorage.setItem('access_token', access_token);
 
         // 2. Update the auth store with the new user context (role will be 'admin', hotelId will be set)
-        login(userData);
+        login(userData, hotelData);
 
         toast.success(`Success! You are now accessing ${hotelData?.name || hotel.name}`);
 
@@ -459,40 +459,41 @@ export default function HotelManagement() {
                   )}
                 </div>
 
-                {/* Manage Access Section */}
-                {isSuperAdmin && (
-                  <div className="pt-4 border-t space-y-3 bg-gray-50/50 -mx-6 px-6 py-4">
-                    <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      <Users className="w-3.5 h-3.5" />
-                      Assign Admin/Sub-Admin
-                    </div>
-                    <SelectDropdown
-                      placeholder="Select User to Assign"
-                      options={users.map(u => ({
-                        value: u._id || u.id,
-                        label: `${u.name || 'No Name'} (${u.email}) • [${u.role?.toUpperCase() || 'USER'}]`
-                      }))}
-                      value={assignmentState[hotel._id]?.userId || ''}
-                      onChange={(e) => setAssignmentState(prev => ({
-                        ...prev,
-                        [hotel._id]: { ...prev[hotel._id], userId: e.target.value, role: 'admin' }
-                      }))}
-                      className="text-sm"
-                    />
-                    <Button
-                      className="w-full"
-                      size="sm"
-                      loading={assigningLoading === hotel._id}
-                      onClick={() => handleAssignUser(hotel._id)}
-                    >
-                      <UserPlus className="w-4 h-4 mr-1.5" />
-                      Assign as Hotel Admin
-                    </Button>
-                  </div>
-                )}
               </div>
 
-              <div className="flex flex-wrap gap-2 pt-4 mt-auto border-t">
+              {/* Manage Access Section - Fixed to bottom */}
+              {isSuperAdmin && (
+                <div className="pt-4 border-t space-y-3 bg-gray-50/50 -mx-6 px-6 py-4">
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    <Users className="w-3.5 h-3.5" />
+                    Assign Admin/Sub-Admin
+                  </div>
+                  <SelectDropdown
+                    placeholder="Select User to Assign"
+                    options={users.map(u => ({
+                      value: u._id || u.id,
+                      label: `${u.name || 'No Name'} (${u.email}) • [${u.role?.toUpperCase() || 'USER'}]`
+                    }))}
+                    value={assignmentState[hotel._id]?.userId || ''}
+                    onChange={(e) => setAssignmentState(prev => ({
+                      ...prev,
+                      [hotel._id]: { ...prev[hotel._id], userId: e.target.value, role: 'admin' }
+                    }))}
+                    className="text-sm"
+                  />
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    loading={assigningLoading === hotel._id}
+                    onClick={() => handleAssignUser(hotel._id)}
+                  >
+                    <UserPlus className="w-4 h-4 mr-1.5" />
+                    Assign as Hotel Admin
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-4 border-t">
                 <Button
                   variant="outline"
                   size="sm"
@@ -513,7 +514,7 @@ export default function HotelManagement() {
                 </Button>
                 {isSuperAdmin && (
                   <>
-                    {/* <Button
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleAccessHotel(hotel)}
@@ -521,7 +522,7 @@ export default function HotelManagement() {
                     >
                       <Building className="w-4 h-4 mr-1" />
                       Access
-                    </Button> */}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -829,6 +830,6 @@ export default function HotelManagement() {
         cancelText="Cancel"
         variant="danger"
       />
-    </div>
+    </div >
   );
 }
