@@ -10,7 +10,7 @@ import { SelectDropdown } from '../atoms/SelectDropdown';
 import { Modal } from '../atoms/Modal';
 import { ConfirmationDialog } from '../molecules/ConfirmationDialog';
 import toast from 'react-hot-toast';
-import { Building, Plus, Edit, Trash2, Search, X, Eye, QrCode, Printer, UserPlus, Users } from 'lucide-react';
+import { Building, Plus, Edit, Trash2, Search, X, Eye, QrCode, Printer, UserPlus, Users, CreditCard, CalendarClock, Zap, Sparkles } from 'lucide-react';
 import { theme } from '../utils/theme';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -30,6 +30,15 @@ export default function HotelManagement() {
   const [users, setUsers] = useState([]);
   const [assignmentState, setAssignmentState] = useState({});
   const [assigningLoading, setAssigningLoading] = useState(null);
+
+  // Trial & Subscription State
+  const [isActivateTrialModalOpen, setIsActivateTrialModalOpen] = useState(false);
+  const [trialHotel, setTrialHotel] = useState(null);
+  const [activateTrialData, setActivateTrialData] = useState({ organization: '', email: '', phone: '', force: false });
+  const [isExtendTrialModalOpen, setIsExtendTrialModalOpen] = useState(false);
+  const [extendDays, setExtendDays] = useState(7);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Check if user is Super Admin
   const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'Super Admin' || user?.role === 'SuperAdmin';
@@ -112,40 +121,108 @@ export default function HotelManagement() {
     }
   };
 
+  // Trial Handlers
+  const handleOpenActivateTrial = (hotel) => {
+    setTrialHotel(hotel);
+    setActivateTrialData({
+      organization: hotel.name || '',
+      email: hotel.email || '',
+      phone: hotel.phone || '',
+      force: false
+    });
+    setIsActivateTrialModalOpen(true);
+  };
+
+  const submitActivateTrial = async () => {
+    if (!trialHotel) return;
+    setActionLoading(true);
+    try {
+      await hotelManagementApi.activateTrial(trialHotel._id || trialHotel.id, activateTrialData);
+      toast.success('Trial activated successfully');
+      setIsActivateTrialModalOpen(false);
+      fetchHotels(pagination.page);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error || 'Failed to activate trial');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenExtendTrial = (hotel) => {
+    setTrialHotel(hotel);
+    setExtendDays(7);
+    setIsExtendTrialModalOpen(true);
+  };
+
+  const submitExtendTrial = async () => {
+    if (!trialHotel) return;
+    setActionLoading(true);
+    try {
+      await hotelManagementApi.extendTrial(trialHotel._id || trialHotel.id, { days: Number(extendDays) });
+      toast.success('Trial extended successfully');
+      setIsExtendTrialModalOpen(false);
+      fetchHotels(pagination.page);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error || 'Failed to extend trial');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenUpgradePlan = (hotel) => {
+    setTrialHotel(hotel);
+    setIsUpgradeModalOpen(true);
+  };
+
+  const submitUpgradePlan = async () => {
+    if (!trialHotel) return;
+    setActionLoading(true);
+    try {
+      const response = await hotelManagementApi.upgradeTrial(trialHotel._id || trialHotel.id);
+      toast.success(response?.message || 'Plan upgraded successfully');
+      setIsUpgradeModalOpen(false);
+      fetchHotels(pagination.page);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error || 'Failed to upgrade plan');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Handle QR
   const handleQR = (hotel) => {
     setQrHotelData(hotel);
     setIsQRModalOpen(true);
   };
 
-  const handleAccessHotel = async (hotel) => {
-    try {
-      setLoading(true);
-      const response = await authApi.accessHotelSuperAdminOnly(hotel._id || hotel.id);
+  // const handleAccessHotel = async (hotel) => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await authApi.accessHotelSuperAdminOnly(hotel._id || hotel.id);
 
-      // Destructure based on the API response structure: { access_token, user, hotel }
-      const { access_token, user: userData, hotel: hotelData } = response;
+  //     // Destructure based on the API response structure: { access_token, user, hotel }
+  //     const { access_token, user: userData, hotel: hotelData } = response;
 
-      if (access_token) {
-        // 1. Store the new access token
-        localStorage.setItem('access_token', access_token);
+  //     if (access_token) {
+  //       // 1. Store the new access token
+  //       localStorage.setItem('access_token', access_token);
 
-        // 2. Update the auth store with the new user context (role will be 'admin', hotelId will be set)
-        login(userData, hotelData);
+  //       // 2. Update the auth store with the new user context (role will be 'admin', hotelId will be set)
+  //       login(userData, hotelData);
 
-        toast.success(`Success! You are now accessing ${hotelData?.name || hotel.name}`);
+  //       toast.success(`Success! You are now accessing ${hotelData?.name || hotel.name}`);
 
-        // 3. Redirect to the hotel dashboard
-        navigate('/dashboard');
-      } else {
-        toast.error('Access token not received');
-      }
-    } catch (error) {
-      toast.error(error || 'Failed to access hotel');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //       // 3. Redirect to the hotel dashboard
+  //       navigate('/dashboard');
+  //     } else {
+  //       toast.error('Access token not received');
+  //     }
+  //   } catch (error) {
+  //     toast.error(error || 'Failed to access hotel');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handlePrintQR = () => {
     if (!qrHotelData) return;
@@ -402,147 +479,211 @@ export default function HotelManagement() {
           {filteredHotels.map((hotel) => (
             <Card key={hotel._id || hotel.id} hover className="flex flex-col h-full">
               <div className="flex-1 space-y-4">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between border-b border-gray-100 pb-3">
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">{hotel.name}</h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-lg font-bold text-gray-900 mb-0.5">{hotel.name}</h3>
+                      {hotel.accessStatus && (
+                        <span className={`shrink-0 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-full ${
+                          hotel.accessStatus === 'paid' ? 'bg-green-100 text-green-700 border border-green-200' :
+                          hotel.accessStatus === 'trial' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                          hotel.accessStatus === 'grace' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                          'bg-gray-100 text-gray-700 border border-gray-200'
+                        }`}>
+                          {hotel.accessStatus}
+                        </span>
+                      )}
+                    </div>
                     {hotel.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2">{hotel.description}</p>
+                      <p className="text-xs text-gray-500 line-clamp-2 mb-1.5">{hotel.description}</p>
+                    )}
+                    {(hotel.trialStartedAt || hotel.trialEndsAt || hotel.graceEndsAt || hotel.paidActivatedAt) && (
+                      <div className="flex flex-col gap-1 mt-1.5">
+                        {(hotel.trialStartedAt || hotel.trialEndsAt) && (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50/50 border border-blue-100 rounded-md w-fit">
+                            <CalendarClock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span className="text-[11px] font-medium text-blue-800">
+                              {hotel.trialStartedAt && (
+                                <span className={hotel.trialEndsAt ? "border-r border-blue-200 pr-1.5 mr-1.5" : ""}>
+                                  Trial Start: <b>{new Date(hotel.trialStartedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</b>
+                                </span>
+                              )}
+                              {hotel.trialEndsAt && (
+                                <span>End: <b>{new Date(hotel.trialEndsAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</b></span>
+                              )}
+                            </span>
+                            {hotel.accessStatus === 'trial' && hotel.trialEndsAt && (
+                              <span className={`text-[10px] whitespace-nowrap font-bold px-1.5 py-0.5 rounded ml-1 ${
+                                new Date(hotel.trialEndsAt) > new Date() 
+                                  ? 'text-blue-700 bg-blue-200/60' 
+                                  : 'text-red-700 bg-red-100'
+                              }`}>
+                                {new Date(hotel.trialEndsAt) > new Date() 
+                                  ? `${Math.ceil((new Date(hotel.trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24))} Days Left`
+                                  : 'Expired'}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {hotel.graceEndsAt && (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-orange-50/50 border border-orange-100 rounded-md w-fit">
+                            <CalendarClock className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                            <span className="text-[11px] font-medium text-orange-800">
+                              Grace Ends: <b>{new Date(hotel.graceEndsAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</b>
+                            </span>
+                            {hotel.accessStatus === 'grace' && (
+                              <span className={`text-[10px] whitespace-nowrap font-bold px-1.5 py-0.5 rounded ml-1 ${
+                                new Date(hotel.graceEndsAt) > new Date() 
+                                  ? 'text-orange-700 bg-orange-200/60' 
+                                  : 'text-red-700 bg-red-100'
+                              }`}>
+                                {new Date(hotel.graceEndsAt) > new Date() 
+                                  ? `${Math.ceil((new Date(hotel.graceEndsAt) - new Date()) / (1000 * 60 * 60 * 24))} Days Left`
+                                  : 'Grace Expired'}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {hotel.paidActivatedAt && (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-50/50 border border-green-100 rounded-md w-fit mt-0.5">
+                            <Zap className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                            <span className="text-[11px] font-medium text-green-800">
+                              Paid Since: <b>{new Date(hotel.paidActivatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</b>
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500">📍</span>
-                    <span className="text-gray-700">
-                      {[hotel.address, hotel.city, hotel.state, hotel.country]
-                        .filter(Boolean)
-                        .join(', ')}
+                <div className="grid grid-cols-2 gap-x-2 gap-y-3 text-sm">
+                  <div className="flex items-start gap-1.5 col-span-2">
+                    <span className="text-gray-400 mt-0.5 text-xs">📍</span>
+                    <span className="text-gray-700 leading-tight text-xs">
+                      {[hotel.address, hotel.city, hotel.state, hotel.country].filter(Boolean).join(', ')}
+                      {hotel.zipCode && ` - ${hotel.zipCode}`}
                     </span>
                   </div>
-                  {hotel.zipCode && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">📮</span>
-                      <span className="text-gray-700">{hotel.zipCode}</span>
-                    </div>
-                  )}
                   {hotel.phone && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">📞</span>
-                      <span className="text-gray-700">{hotel.phone}</span>
+                    <div className="flex items-center gap-1.5 break-all">
+                      <span className="text-gray-400 text-xs">📞</span>
+                      <span className="text-gray-700 text-xs">{hotel.phone}</span>
                     </div>
                   )}
                   {hotel.email && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">✉️</span>
-                      <span className="text-gray-700">{hotel.email}</span>
+                    <div className="flex items-center gap-1.5 break-all">
+                      <span className="text-gray-400 text-xs">✉️</span>
+                      <span className="text-gray-700 text-xs line-clamp-1" title={hotel.email}>{hotel.email}</span>
                     </div>
                   )}
                   {hotel.website && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">🌐</span>
-                      <a
-                        href={hotel.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
+                    <div className="flex items-center gap-1.5 col-span-2 break-all">
+                      <span className="text-gray-400 text-xs">🌐</span>
+                      <a href={hotel.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs line-clamp-1">
                         {hotel.website}
                       </a>
                     </div>
                   )}
                   {hotel.totalRooms !== undefined && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500">🏨</span>
-                      <span className="text-gray-700">{hotel.totalRooms} Rooms</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-400 text-xs">🏨</span>
+                      <span className="text-gray-700 text-xs">{hotel.totalRooms} Rooms</span>
                     </div>
                   )}
                 </div>
-
               </div>
 
-              {/* Manage Access Section - Fixed to bottom */}
-              {isSuperAdmin && (
-                <div className="pt-4 border-t space-y-3 bg-gray-50/50 -mx-6 px-6 py-4">
-                  <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    <Users className="w-3.5 h-3.5" />
-                    Assign Admin/Sub-Admin
-                  </div>
-                  <SelectDropdown
-                    placeholder="Select User to Assign"
-                    options={users.map(u => ({
-                      value: u._id || u.id,
-                      label: `${u.name || 'No Name'} (${u.email}) • [${u.role?.toUpperCase() || 'USER'}]`
-                    }))}
-                    value={assignmentState[hotel._id]?.userId || ''}
-                    onChange={(e) => setAssignmentState(prev => ({
-                      ...prev,
-                      [hotel._id]: { ...prev[hotel._id], userId: e.target.value, role: 'admin' }
-                    }))}
-                    className="text-sm"
-                  />
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    loading={assigningLoading === hotel._id}
-                    onClick={() => handleAssignUser(hotel._id)}
-                  >
-                    <UserPlus className="w-4 h-4 mr-1.5" />
-                    Assign as Hotel Admin
-                  </Button>
-                </div>
-              )}
+              {/* Footer Sections */}
+              <div className="mt-4 flex flex-col -mx-6 -mb-6">
 
-              <div className="flex flex-wrap gap-2 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleView(hotel)}
-                  className="flex-1 min-w-[80px]"
-                >
-                  <Eye className="w-4 h-4 mr-1" />
-                  View
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQR(hotel)}
-                  className="flex-1 min-w-[80px]"
-                >
-                  <QrCode className="w-4 h-4 mr-1" />
-                  QR Code
-                </Button>
+                {/* Assign Admin (Compact) */}
                 {isSuperAdmin && (
-                  <>
-                    {/* <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAccessHotel(hotel)}
-                      className="flex-1 min-w-[80px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
-                    >
-                      <Building className="w-4 h-4 mr-1" />
-                      Access
-                    </Button> */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(hotel)}
-                      className="flex-1 min-w-[80px]"
-                    >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(hotel)}
-                      className="flex-1 min-w-[80px]"
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
-                  </>
+                  <div className="bg-gray-50 border-t border-gray-100 px-6 py-3">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      <Users className="w-3 h-3" /> Assign Admin
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <SelectDropdown
+                          placeholder="Select User"
+                          options={users.map(u => ({
+                            value: u._id || u.id,
+                            label: `${u.name || 'User'} (${u.email})`
+                          }))}
+                          value={assignmentState[hotel._id]?.userId || ''}
+                          onChange={(e) => setAssignmentState(prev => ({
+                            ...prev,
+                            [hotel._id]: { ...prev[hotel._id], userId: e.target.value, role: 'admin' }
+                          }))}
+                          className="text-xs min-h-[32px] py-1"
+                        />
+                      </div>
+                      <Button
+                        className=""
+                        size="sm"
+                        style={{ height: '38px' }}
+                        loading={assigningLoading === hotel._id}
+                        onClick={() => handleAssignUser(hotel._id)}
+                      >
+                        <UserPlus className="w-3.5 h-3.5  text-black" /> Assign
+                      </Button>
+                    </div>
+                  </div>
                 )}
+
+                {/* Subscription Actions */}
+                {isSuperAdmin && (
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-t border-purple-100 px-6 py-2.5 flex items-center justify-between">
+                    <div className="text-[10px] font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" /> Subscription
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => handleOpenActivateTrial(hotel)}
+                        className="px-2 py-1.5 text-green-700 hover:bg-green-200/50 bg-green-100/50 border border-green-300 rounded-md transition-colors flex items-center gap-1 text-[11px] font-semibold"
+                        title="Activate Trial"
+                      >
+                        <Zap className="w-3 h-3" /> Trial
+                      </button>
+                      <button
+                        onClick={() => handleOpenExtendTrial(hotel)}
+                        className="px-2 py-1.5 text-blue-700 hover:bg-blue-200/50 bg-blue-100/50 border border-blue-300 rounded-md transition-colors flex items-center gap-1 text-[11px] font-semibold"
+                        title="Extend Trial"
+                      >
+                        <CalendarClock className="w-3 h-3" /> Extend
+                      </button>
+                      <button
+                        onClick={() => handleOpenUpgradePlan(hotel)}
+                        
+                        className="px-2 py-1.5 text-purple-700 hover:bg-purple-200/50 bg-purple-100/50 border border-purple-300 rounded-md transition-colors flex items-center gap-1 text-[11px] font-semibold"
+                        title="Upgrade Plan"
+                      >
+                        <CreditCard className="w-3 h-3" /> Upgrade
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Standard Actions */}
+                <div className="border-t border-gray-100 px-6 py-3 flex gap-2 bg-white rounded-b-2xl">
+                  <Button variant="outline" size="sm" onClick={() => handleView(hotel)} className="flex-1 text-xs py-1.5 h-auto">
+                    <Eye className="w-3.5 h-3.5 mr-1" /> View
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleQR(hotel)} className="flex-1 text-xs py-1.5 h-auto">
+                    <QrCode className="w-3.5 h-3.5 mr-1" /> QR
+                  </Button>
+                  {isSuperAdmin && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(hotel)} className="flex-1 text-xs py-1.5 h-auto">
+                        <Edit className="w-3.5 h-3.5 mr-1" /> Edit
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(hotel)} className="px-3 h-auto py-1.5 min-w-0" title="Delete Hotel">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </Card>
           ))}
@@ -710,10 +851,34 @@ export default function HotelManagement() {
             </div>
 
             {/* Additional Information */}
-            {(viewHotelData.createdAt || viewHotelData.updatedAt) && (
+            {(viewHotelData.createdAt || viewHotelData.updatedAt || viewHotelData.trialEndsAt || viewHotelData.accessStatus) && (
               <div className="border-t pt-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Additional Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Subscription & Additional Info</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  {viewHotelData.accessStatus && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Access Status</label>
+                      <p className="text-gray-900 mt-1 capitalize font-medium">
+                        {viewHotelData.accessStatus}
+                      </p>
+                    </div>
+                  )}
+                  {viewHotelData.trialEndsAt && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Trial Ends At</label>
+                      <p className="text-gray-900 mt-1">
+                        {new Date(viewHotelData.trialEndsAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                  {viewHotelData.graceEndsAt && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Grace Ends At</label>
+                      <p className="text-gray-900 mt-1">
+                        {new Date(viewHotelData.graceEndsAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
                   {viewHotelData.createdAt && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">Created At</label>
@@ -829,6 +994,117 @@ export default function HotelManagement() {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      {/* Activate Trial Modal */}
+      <Modal
+        isOpen={isActivateTrialModalOpen}
+        onClose={() => {
+          setIsActivateTrialModalOpen(false);
+          setTrialHotel(null);
+        }}
+        title={`Activate Trial for ${trialHotel?.name}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <InputField
+            label="Organization Name"
+            value={activateTrialData.organization}
+            onChange={(e) => setActivateTrialData({ ...activateTrialData, organization: e.target.value })}
+            placeholder="Enter organization name"
+          />
+          <InputField
+            label="Email Address"
+            type="email"
+            value={activateTrialData.email}
+            onChange={(e) => setActivateTrialData({ ...activateTrialData, email: e.target.value })}
+            placeholder="Enter email address"
+          />
+          <InputField
+            label="Phone Number"
+            value={activateTrialData.phone}
+            onChange={(e) => setActivateTrialData({ ...activateTrialData, phone: e.target.value })}
+            placeholder="Enter phone number"
+          />
+          <label className="flex items-center gap-2 mt-4 cursor-pointer text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={activateTrialData.force}
+              onChange={(e) => setActivateTrialData({ ...activateTrialData, force: e.target.checked })}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            {`Force activation (Overrides existing plan)`}
+          </label>
+          <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsActivateTrialModalOpen(false);
+                setTrialHotel(null);
+              }}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={submitActivateTrial} loading={actionLoading}>
+              Activate Trial
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Extend Trial Modal */}
+      <Modal
+        isOpen={isExtendTrialModalOpen}
+        onClose={() => {
+          setIsExtendTrialModalOpen(false);
+          setTrialHotel(null);
+        }}
+        title={`Extend Trial for ${trialHotel?.name}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 mb-4">
+            Enter the number of days to extend the existing trial.
+          </p>
+          <InputField
+            label="Extension Days"
+            type="number"
+            min="1"
+            value={extendDays}
+            onChange={(e) => setExtendDays(e.target.value)}
+            placeholder="Number of days"
+          />
+          <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsExtendTrialModalOpen(false);
+                setTrialHotel(null);
+              }}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={submitExtendTrial} loading={actionLoading}>
+              Extend Trial
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Upgrade Plan Confirmation */}
+      <ConfirmationDialog
+        isOpen={isUpgradeModalOpen}
+        onClose={() => {
+          setIsUpgradeModalOpen(false);
+          setTrialHotel(null);
+        }}
+        onConfirm={submitUpgradePlan}
+        title="Upgrade to Paid Plan"
+        message={`Are you sure you want to upgrade "${trialHotel?.name}" to a paid plan? This will transition the hotel from trial status to paid status.`}
+        confirmText={actionLoading ? "Upgrading..." : "Upgrade Plan"}
+        cancelText="Cancel"
       />
     </div >
   );

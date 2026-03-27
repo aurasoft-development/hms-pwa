@@ -29,4 +29,20 @@ export const hotelManagementApi = {
         const response = await apiServices().get('hotels/my-hotel');
         return response;
     },
+    activateTrial: async (hotelId, data) => {
+        const response = await apiServices().post(`trials/hotels/${hotelId}/activate`, data);
+        return response;
+    },
+    extendTrial: async (hotelId, data) => {
+        const response = await apiServices().patch(`trials/hotels/${hotelId}/extend`, data);
+        return response;
+    },
+    upgradeTrial: async (hotelId) => {
+        const response = await apiServices().post(`trials/hotels/${hotelId}/upgrade`);
+        return response;
+    },
+    getTrialStatus: async () => {
+        const response = await apiServices().get('trials/status');
+        return response;
+    },
 }

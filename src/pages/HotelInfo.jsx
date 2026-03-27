@@ -5,8 +5,9 @@ import { Button } from '../atoms/Button';
 import { InputField } from '../atoms/InputField';
 import toast from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
-import { QrCode, Printer, Download, ExternalLink } from 'lucide-react';
+import { QrCode, Printer, Download, ExternalLink, CalendarClock, Zap, AlertCircle } from 'lucide-react';
 import { theme } from '../utils/theme';
+import { hotelManagementApi } from '../api/hotelManagementAPI/hotelManagementApi';
 
 export default function HotelInfo() {
   const { hotel, updateHotel } = useAppStore();
@@ -18,6 +19,7 @@ export default function HotelInfo() {
     googleReviewLink: '',
   });
   const [loading, setLoading] = useState(false);
+  const [realHotel, setRealHotel] = useState(null);
 
   useEffect(() => {
     if (hotel) {
@@ -30,6 +32,21 @@ export default function HotelInfo() {
       });
     }
   }, [hotel]);
+
+  useEffect(() => {
+    const fetchRealHotel = async () => {
+      try {
+        const response = await hotelManagementApi.getMyHotel();
+        const hotelData = response.data || response;
+        if (hotelData) {
+          setRealHotel(hotelData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch real hotel data:', error);
+      }
+    };
+    fetchRealHotel();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -135,9 +152,59 @@ export default function HotelInfo() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Hotel Information</h1>
-        <p className="text-gray-600 mt-1">Manage your hotel details</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Hotel Information</h1>
+          <p className="text-gray-600 mt-1">Manage your hotel details</p>
+        </div>
+        
+        {/* Subscription Status Badge */}
+        {realHotel && realHotel.accessStatus && (
+          <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-xl border border-gray-100 shadow-sm">
+            <div className={`p-2 rounded-lg ${
+              realHotel.accessStatus === 'paid' ? 'bg-green-100 text-green-600' :
+              realHotel.accessStatus === 'trial' ? 'bg-blue-100 text-blue-600' :
+              realHotel.accessStatus === 'grace' ? 'bg-orange-100 text-orange-600' :
+              'bg-gray-100 text-gray-600'
+            }`}>
+              {realHotel.accessStatus === 'paid' ? <Zap className="w-5 h-5" /> : 
+               realHotel.accessStatus === 'trial' ? <CalendarClock className="w-5 h-5" /> : 
+               <AlertCircle className="w-5 h-5" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-gray-900 capitalize">
+                  {realHotel.accessStatus} Plan
+                </span>
+                {realHotel.accessStatus === 'trial' && realHotel.trialEndsAt && new Date(realHotel.trialEndsAt) > new Date() && (
+                  <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                    {Math.ceil((new Date(realHotel.trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24))} Days Left
+                  </span>
+                )}
+                {realHotel.accessStatus === 'grace' && realHotel.graceEndsAt && new Date(realHotel.graceEndsAt) > new Date() && (
+                  <span className="text-[10px] font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                    {Math.ceil((new Date(realHotel.graceEndsAt) - new Date()) / (1000 * 60 * 60 * 24))} Days Left
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex flex-col gap-0.5 mt-1 text-xs text-gray-500">
+                {realHotel.trialStartedAt && (
+                  <span>Trial Start: {new Date(realHotel.trialStartedAt).toLocaleDateString('en-GB')}</span>
+                )}
+                {realHotel.trialEndsAt && (
+                  <span>Trial End: {new Date(realHotel.trialEndsAt).toLocaleDateString('en-GB')}</span>
+                )}
+                {realHotel.graceEndsAt && (
+                  <span>Grace Ends: {new Date(realHotel.graceEndsAt).toLocaleDateString('en-GB')}</span>
+                )}
+                {realHotel.paidActivatedAt && (
+                  <span>Paid Since: {new Date(realHotel.paidActivatedAt).toLocaleDateString('en-GB')}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <Card>

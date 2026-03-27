@@ -11,7 +11,7 @@ import { Card } from '../atoms/Card';
 import { Button } from '../atoms/Button';
 import { StatCard } from '../molecules/StatCard';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Calendar, Users, TrendingUp, ArrowRight, Clock, Sparkles, Building2, Sun, Moon, Coffee } from 'lucide-react';
+import { Calendar, Users, TrendingUp, ArrowRight, Clock, Sparkles, Building2, Sun, Moon, Coffee, CalendarClock, Zap, AlertCircle } from 'lucide-react';
 import { RupeeIcon } from '../atoms/RupeeIcon';
 import { safeDate } from '../utils/dateUtils';
 import { format } from 'date-fns';
@@ -22,6 +22,7 @@ export default function Dashboard() {
   const { bookings, initializeData } = useAppStore();
   const { user, hotelData: cachedHotelData } = useAuthStore();
   const [hotelName, setHotelName] = useState('');
+  const [realHotel, setRealHotel] = useState(cachedHotelData || null);
   const [superAdminStats, setSuperAdminStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
@@ -65,6 +66,7 @@ export default function Dashboard() {
 
       // Use cached data if available
       if (cachedHotelData?.name) {
+        setRealHotel(cachedHotelData);
         setHotelName(cachedHotelData.name);
         return;
       }
@@ -72,8 +74,11 @@ export default function Dashboard() {
       try {
         const response = await hotelManagementApi.getMyHotel();
         const hotel = response.data || response;
-        if (hotel?.name) {
-          setHotelName(hotel.name);
+        if (hotel) {
+          setRealHotel(hotel);
+          if (hotel.name) {
+            setHotelName(hotel.name);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch hotel:', error);
@@ -214,25 +219,107 @@ export default function Dashboard() {
                 }
               </h1>
 
-              <p className="text-white/90 text-sm sm:text-base font-medium max-w-2xl">
+              <p className="text-white/90 text-sm sm:text-base font-medium max-w-2xl mb-4">
                 {isSuperAdmin
                   ? "Here's what's happening across all your hotels today."
                   : `Here's your overview for ${format(new Date(), 'EEEE, MMMM d, yyyy')}`
                 }
               </p>
+
+              {/* Enhanced Subscription Lifecycle Chiclets */}
+              {!isSuperAdmin && realHotel && (
+                <div className="flex flex-wrap items-center gap-2 mt-4">
+                  {realHotel.trialStartedAt && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm shadow-sm transition-all hover:bg-white/20">
+                      <CalendarClock className="w-4 h-4 text-white/90" />
+                      <span className="text-xs font-semibold text-white tracking-wide">
+                        Trial Start: {new Date(realHotel.trialStartedAt).toLocaleDateString('en-GB')}
+                      </span>
+                    </div>
+                  )}
+
+                  {realHotel.trialEndsAt && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm shadow-sm transition-all hover:bg-white/20">
+                      <CalendarClock className="w-4 h-4 text-white/90" />
+                      <span className="text-xs font-semibold text-white tracking-wide">
+                        Trial End: {new Date(realHotel.trialEndsAt).toLocaleDateString('en-GB')}
+                      </span>
+                      {realHotel.accessStatus === 'trial' && new Date(realHotel.trialEndsAt) > new Date() && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-md bg-white text-[#039E2F] text-[10px] font-bold uppercase tracking-wider">
+                          {Math.ceil((new Date(realHotel.trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24))} Days Left
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {realHotel.graceEndsAt && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/20 border border-orange-400/30 backdrop-blur-sm shadow-sm transition-all hover:bg-orange-500/30">
+                      <AlertCircle className="w-4 h-4 text-orange-200" />
+                      <span className="text-xs font-semibold text-orange-100 tracking-wide">
+                        Grace End: {new Date(realHotel.graceEndsAt).toLocaleDateString('en-GB')}
+                      </span>
+                      {realHotel.accessStatus === 'grace' && new Date(realHotel.graceEndsAt) > new Date() && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-800 text-[10px] font-bold uppercase tracking-wider">
+                          {Math.ceil((new Date(realHotel.graceEndsAt) - new Date()) / (1000 * 60 * 60 * 24))} Days Left
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {realHotel.paidActivatedAt && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 backdrop-blur-sm shadow-sm transition-all hover:bg-emerald-500/30">
+                      <Zap className="w-4 h-4 text-emerald-100" />
+                      <span className="text-xs font-semibold text-emerald-50 tracking-wide">
+                        Paid Since: {new Date(realHotel.paidActivatedAt).toLocaleDateString('en-GB')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Icon Badge */}
-            <div
-              className="hidden sm:flex items-center justify-center w-16 h-16 rounded-2xl shadow-xl flex-shrink-0"
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                backdropFilter: 'blur(10px)',
-                border: '2px solid rgba(255, 255, 255, 0.2)',
-              }}
-            >
-              <Building2 className="w-8 h-8 text-white" />
-            </div>
+            {/* Main Status Badge */}
+            {!isSuperAdmin && realHotel && realHotel.accessStatus ? (
+              <div
+                className="hidden sm:flex flex-col items-center justify-center p-4 rounded-2xl shadow-xl flex-shrink-0 min-w-[120px] transition-transform hover:scale-105"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                <div className={`p-3 rounded-xl mb-2 ${
+                  realHotel.accessStatus === 'paid' ? 'bg-emerald-500/30 text-emerald-100' :
+                  realHotel.accessStatus === 'trial' ? 'bg-blue-500/30 text-blue-100' :
+                  realHotel.accessStatus === 'grace' ? 'bg-orange-500/30 text-orange-100' :
+                  'bg-white/20 text-white'
+                }`}>
+                  {realHotel.accessStatus === 'paid' ? <Zap className="w-8 h-8 drop-shadow-md" /> : 
+                   realHotel.accessStatus === 'trial' ? <CalendarClock className="w-8 h-8 drop-shadow-md" /> : 
+                   <AlertCircle className="w-8 h-8 drop-shadow-md" />}
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-white font-black text-sm tracking-widest uppercase drop-shadow-md">
+                    {realHotel.accessStatus}
+                  </span>
+                  <span className="text-white/80 text-[10px] font-medium tracking-widest uppercase mt-0.5">
+                    Plan
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="hidden sm:flex items-center justify-center w-16 h-16 rounded-2xl shadow-xl flex-shrink-0"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  backdropFilter: 'blur(10px)',
+                  border: '2px solid rgba(255, 255, 255, 0.2)',
+                }}
+              >
+                <Building2 className="w-8 h-8 text-white" />
+              </div>
+            )}
           </div>
         </div>
       </Card>
