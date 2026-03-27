@@ -38,7 +38,7 @@ export const hotelManagementApi = {
         return response;
     },
     upgradeTrial: async (hotelId) => {
-        const response = await apiServices().post(`trials/hotels/${hotelId}/upgrade`);
+        const response = await apiServices().patch(`trials/hotels/${hotelId}/upgrade`);
         return response;
     },
     getTrialStatus: async () => {
