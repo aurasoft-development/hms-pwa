@@ -316,6 +316,14 @@ export default function AppLayout() {
               <p className="text-sm font-semibold text-[#1A1A40] truncate max-w-[120px]">{user?.name}</p>
               <p className="text-xs text-[#1A1A40]/80 truncate max-w-[120px]">{user?.role}</p>
             </div>
+            {/* Mobile Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="lg:hidden p-1.5 text-[#1A1A40]/70 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </header>
@@ -463,7 +471,7 @@ export default function AppLayout() {
           </nav>
 
           {/* Logout */}
-          <div className="p-4 border-t" style={{ borderColor: 'rgba(26, 26, 64, 0.1)' }}>
+          <div className="p-4 pb-8 lg:pb-4 border-t mt-auto" style={{ borderColor: 'rgba(26, 26, 64, 0.1)' }}>
             <button
               onClick={handleLogout}
               className={`

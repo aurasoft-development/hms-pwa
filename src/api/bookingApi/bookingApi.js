@@ -43,7 +43,7 @@ export const bookingApi = {
     updateBookingStatus: async (id, status, hotelId) => {
         const bId = extractId(id);
         const hId = extractId(hotelId);
-        const response = await apiServices().patch(`bookings/${bId}/status?status=${status}&hotelId=${hId}`);
+        const response = await apiServices().patch(`bookings/${bId}/status?status=${status}&hotelId=${hId}`, { status, hotelId: hId });
         return response;
     },
 

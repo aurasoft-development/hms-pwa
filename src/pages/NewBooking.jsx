@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bookingApi } from '../api/bookingApi/bookingApi';
 import { authApi } from '../api/authApi/authApi';
@@ -51,10 +51,10 @@ export default function NewBooking() {
   const [hotelId, setHotelId] = useState(null);
   const [apiFoodPackages, setApiFoodPackages] = useState([]);
   const [foodPackagesLoading, setFoodPackagesLoading] = useState(false);
-  const [selectedManagers, setSelectedManagers] = useState(() => getFormData('newBookingManagers', []));
+  const [selectedManagers, setSelectedManagers] = useState(() => getFormData('newBookingManagers_v2', []));
 
   useEffect(() => {
-    setPersistentData('newBookingManagers', selectedManagers);
+    setPersistentData('newBookingManagers_v2', selectedManagers);
   }, [selectedManagers, setPersistentData]);
   const [successData, setSuccessData] = useState(null);
 
@@ -73,10 +73,10 @@ export default function NewBooking() {
     notes: '',
   };
 
-  const [formData, setFormData] = useState(() => getFormData('newBooking', initialFormData));
+  const [formData, setFormData] = useState(() => getFormData('newBooking_v2', initialFormData));
 
   useEffect(() => {
-    setPersistentData('newBooking', formData);
+    setPersistentData('newBooking_v2', formData);
   }, [formData, setPersistentData]);
 
   const [priceBreakdown, setPriceBreakdown] = useState(null);
@@ -84,13 +84,18 @@ export default function NewBooking() {
 
 
   // Use API rooms or fallback - ensure all are transformed
-  const rooms = (apiRooms.length > 0 ? apiRooms : hookRooms.map(transformRoomFromAPI)).filter(Boolean);
+  const rooms = useMemo(() => {
+    return (apiRooms.length > 0 ? apiRooms : hookRooms.map(transformRoomFromAPI)).filter(Boolean);
+  }, [apiRooms, hookRooms]);
+
   // Use API food packages or fallback
-  const availableFoodPackages = (apiFoodPackages.length > 0 ? apiFoodPackages : foodPackages).map(fp => ({
-    ...fp,
-    id: fp._id || fp.id,
-    price: Number(fp.price || 0)
-  }));
+  const availableFoodPackages = useMemo(() => {
+    return (apiFoodPackages.length > 0 ? apiFoodPackages : foodPackages).map(fp => ({
+      ...fp,
+      id: fp._id || fp.id,
+      price: Number(fp.price || 0)
+    }));
+  }, [apiFoodPackages, foodPackages]);
 
   // --- Data Fetching Logic (Same as BookingForm) ---
 
@@ -177,7 +182,14 @@ export default function NewBooking() {
   useEffect(() => {
     setFormData(prev => {
       if (!prev.checkIn && !prev.checkOut) {
-        const todayAt11 = getTodayWithDefaultTime('11:00');
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+        const currentDay = String(now.getDate()).padStart(2, '0');
+        const currentHours = String(now.getHours()).padStart(2, '0');
+        const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+        const currentDateTime = `${currentYear}-${currentMonth}-${currentDay}T${currentHours}:${currentMinutes}`;
+
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowYear = tomorrow.getFullYear();
@@ -187,7 +199,7 @@ export default function NewBooking() {
 
         return {
           ...prev,
-          checkIn: todayAt11,
+          checkIn: currentDateTime,
           checkOut: tomorrowAt12,
         };
       }
@@ -224,7 +236,10 @@ export default function NewBooking() {
 
   const handleChange = (field, value) => {
     if (field === 'checkIn' && value && !value.includes('T')) {
-      value = getDefaultDateTime(value, '11:00');
+      const now = new Date();
+      const currentHours = String(now.getHours()).padStart(2, '0');
+      const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+      value = getDefaultDateTime(value, `${currentHours}:${currentMinutes}`);
     } else if (field === 'checkOut' && value && !value.includes('T')) {
       value = getDefaultDateTime(value, '12:00');
     }
@@ -310,8 +325,8 @@ export default function NewBooking() {
       }
 
       toast.success('Booking created successfully!');
-      clearFormData('newBooking');
-      clearFormData('newBookingManagers');
+      clearFormData('newBooking_v2');
+      clearFormData('newBookingManagers_v2');
       // navigate('/bookings'); // Don't navigate immediately, show success view
     } catch (error) {
       toast.error(error?.message || error || 'Failed to create booking');
@@ -413,8 +428,8 @@ export default function NewBooking() {
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => {
-            clearFormData('newBooking');
-            clearFormData('newBookingManagers');
+            clearFormData('newBooking_v2');
+            clearFormData('newBookingManagers_v2');
             window.location.reload();
           }}>Reset</Button>
           <Button variant="outline" onClick={() => navigate('/bookings')}>Close</Button>

@@ -252,7 +252,10 @@ export default function EditBooking() {
 
   const handleChange = (field, value) => {
     if (field === 'checkIn' && value && !value.includes('T')) {
-      value = getDefaultDateTime(value, '11:00');
+      const now = new Date();
+      const currentHours = String(now.getHours()).padStart(2, '0');
+      const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+      value = getDefaultDateTime(value, `${currentHours}:${currentMinutes}`);
     } else if (field === 'checkOut' && value && !value.includes('T')) {
       value = getDefaultDateTime(value, '12:00');
     }
@@ -293,6 +296,7 @@ export default function EditBooking() {
         checkInDate: new Date(formData.checkIn).toISOString(),
         checkOutDate: new Date(formData.checkOut).toISOString(),
         foodPackage: selectedFoodPackage?.name || '',
+        status: formData.status,
         notes: formData.notes,
       };
 
